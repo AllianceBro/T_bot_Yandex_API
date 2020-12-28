@@ -32,8 +32,7 @@ def parse_homework_status(homework):
                        'можно приступать к следующему уроку.')
         return f'У вас проверили работу "{homework_name}"!\n\n{verdict}'
     except Exception as e:
-        error_text = f'Have a problem with API: {e}'
-        logging.error(error_text, exc_info=True)
+        logging.error(f'Have a problem with API: {e}', exc_info=True)
 
 
 def get_homework_statuses(current_timestamp):
@@ -47,8 +46,7 @@ def get_homework_statuses(current_timestamp):
     try:
         homework_statuses.raise_for_status()
     except Exception as e:
-        error_text = f'Response has an exeption: {e}'
-        logging.error(error_text, exc_info=True)
+        logging.error(f'Response has an exeption: {e}', exc_info=True)
     return homework_statuses.json()
 
 
