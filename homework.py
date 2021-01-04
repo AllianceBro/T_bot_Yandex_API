@@ -12,12 +12,13 @@ load_dotenv()
 PRAKTIKUM_TOKEN = os.getenv('PRAKTIKUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-YANDEX_HOMEWORK_URL = 'https://praktikum.yandex.ru/api/user_api/homework_statuses/'
+YANDEX_HOMEWORK_URL = ('https://praktikum.yandex.ru/'
+                       'api/user_api/homework_statuses/')
 HOMEWORK_IS_CHECKED = 'У вас проверили работу "{homework_name}"!\n\n{verdict}'
 HOMEWORK_STATUS_DICTIONARY = {
     'rejected': 'К сожалению в работе нашлись ошибки.',
     'approved': ('Ревьюеру всё понравилось, '
-                'можно приступать к следующему уроку.'),
+                 'можно приступать к следующему уроку.'),
 }
 SERVER_ERROR_KEYS = ['error', 'code']
 
@@ -63,9 +64,14 @@ def get_homework_statuses(current_timestamp):
             raise ConnectionError
         except KeyError:
             pass
-        except ConnectionError as e:
-            logging.error(f'Server said that it is in trouble: {error_message}', exc_info=True)
-            raise ConnectionError(f'Server said that it is in trouble: {error_message}')
+        except ConnectionError:
+            logging.error(
+                f'Server said that it is in trouble: {error_message}',
+                exc_info=True
+            )
+            raise ConnectionError(
+                f'Server said that it is in trouble: {error_message}'
+            )
     return r_json
 
 
