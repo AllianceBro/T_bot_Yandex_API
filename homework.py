@@ -30,6 +30,7 @@ LOG_VALUE_ERROR = ('Json doesnt contain expected homework status values. '
 LOG_CONNECTION_ERROR = 'Request faced an error: {error}!\n' + REQUEST_LOG
 LOG_API_ERROR = 'Server said that he faced a trouble: {error}!\n' + REQUEST_LOG
 LOG_SENT_MESSAGE = 'Have sent a message: {}'
+LOG_START_BOT = 'Bot has launched'
 
 bot_client = telegram.Bot(token=TELEGRAM_TOKEN)
 
@@ -87,10 +88,10 @@ def send_message(message, bot_client):
 
 def main():
     current_timestamp = int(time.time())
-    logging.debug('Bot has launched')
+    logging.debug(LOG_START_BOT)
     while True:
         try:
-            new_homework = get_homework_statuses(0)
+            new_homework = get_homework_statuses(current_timestamp)
             if new_homework.get('homeworks'):
                 send_message(
                     parse_homework_status(new_homework.get('homeworks')[0]),
