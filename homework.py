@@ -9,42 +9,48 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+class APIError(Exception):
+    def __init__(self, text):
+        self.txt = text
+
+
 PRAKTIKUM_TOKEN = os.getenv('PRAKTIKUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 YANDEX_HOMEWORK_URL = ('https://praktikum.yandex.ru/'
                        'api/user_api/homework_statuses/')
+REQUEST_HEADERS = {'Authorization': f'OAuth {PRAKTIKUM_TOKEN}'}
 HOMEWORK_IS_CHECKED = 'У вас проверили работу "{homework_name}"!\n\n{verdict}'
-HOMEWORK_STATUS_DICTIONARY = {
+HOMEWORK_STATUS = {
     'rejected': 'К сожалению в работе нашлись ошибки.',
-    'approved': ('Ревьюеру всё понравилось, '
-                 'можно приступать к следующему уроку.'),
+    'approved': 'Ревьюеру всё понравилось, '
+                'можно приступать к следующему уроку.',
 }
-SERVER_ERROR_KEYS = ['error', 'code']
+REQUEST_LOG = ('Request url was: {url}\n'
+               'Headers were: {headers}\n'
+               'Params were: {params}')
+BOT_ERROR = 'Bot has faced an error: {}'
+LOG_VALUE_ERROR = ('Json doesnt contain expected homework status values. '
+                   'Json value: {}')
+LOG_CONNECTION_ERROR = 'Request faced an error: {error}!\n' + REQUEST_LOG
+LOG_API_ERROR = 'Server said that he faced a trouble: {error}!\n' + REQUEST_LOG
 
 
 def parse_homework_status(homework):
-    homework_name = homework['homework_name']
-    try:
-        # Check if server gives us correct json with statuses
-        status = homework['status']
-        # Check if json contains expected values
-        if homework['status'] not in HOMEWORK_STATUS_DICTIONARY.keys():
-            raise KeyError
-    except KeyError as e:
-        logging.error(f'API gives an unexpected response : {e}', exc_info=True)
-        raise KeyError('API gives an unexpected response')
-    for status in HOMEWORK_STATUS_DICTIONARY:
-        if homework['status'] == status:
-            verdict = HOMEWORK_STATUS_DICTIONARY[status]
+    # Check if json contains expected values
+    if homework['status'] not in HOMEWORK_STATUS:
+        raise ValueError(
+           LOG_VALUE_ERROR.format(homework['status'])
+        )
+    verdict = HOMEWORK_STATUS[homework['status']]
     return HOMEWORK_IS_CHECKED.format(
-               homework_name=homework_name,
-               verdict=verdict
-           )
+        homework_name=homework['homework_name'],
+        verdict=verdict
+    )
 
 
 def get_homework_statuses(current_timestamp):
-    headers = {'Authorization': f'OAuth {PRAKTIKUM_TOKEN}'}
+    headers = REQUEST_HEADERS
     params = {'from_date': current_timestamp}
     try:
         response = requests.get(
@@ -52,27 +58,29 @@ def get_homework_statuses(current_timestamp):
             headers=headers,
             params=params
         )
-    except (ConnectionError, TimeoutError) as e:
-        logging.error(f'Response has an exeption: {e}', exc_info=True)
-        raise ConnectionError('Server doesnt work properly')
-    r_json = response.json()
-    print(r_json)
+    except requests.RequestException as error:
+        raise ConnectionError(
+            LOG_CONNECTION_ERROR.format(
+                error=error,
+                url=YANDEX_HOMEWORK_URL,
+                headers=headers,
+                params=params
+            )
+        )
+    response_json = response.json()
     # Check if server sent an error message
-    for error_key in SERVER_ERROR_KEYS:
-        try:
-            error_message = r_json[error_key]
-            raise ConnectionError
-        except KeyError:
-            pass
-        except ConnectionError:
-            logging.error(
-                f'Server said that it is in trouble: {error_message}',
-                exc_info=True
+    server_error_keys = ['error', 'code']
+    for error_key in server_error_keys:
+        if error_key in response_json:
+            raise APIError(
+                LOG_API_ERROR.format(
+                    error=response_json[error_key],
+                    url=YANDEX_HOMEWORK_URL,
+                    headers=headers,
+                    params=params
+                )
             )
-            raise ConnectionError(
-                f'Server said that it is in trouble: {error_message}'
-            )
-    return r_json
+    return response_json
 
 
 def send_message(message, bot_client):
@@ -89,16 +97,18 @@ def main():
             if new_homework.get('homeworks'):
                 send_message(
                     parse_homework_status(new_homework.get('homeworks')[0]),
-                    bot_client
+                    bot_client=telegram.Bot(token=TELEGRAM_TOKEN)
                 )
             current_timestamp = new_homework.get(
                 'current_date',
                 current_timestamp
             )
             time.sleep(1200)
-
-        except Exception as e:
-            logging.error(f'Bot has faced an error: {e}', exc_info=True)
+        except Exception as error:
+            logging.error(
+                BOT_ERROR.format(error),
+                exc_info=False
+            )
             time.sleep(5)
 
 
@@ -106,7 +116,7 @@ if __name__ == '__main__':
     bot_client = telegram.Bot(token=TELEGRAM_TOKEN)
     logging.basicConfig(
         level=logging.DEBUG,
-        filename= __file__ + '.log',
+        filename=__file__ + '.log',
         filemode='w',
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
