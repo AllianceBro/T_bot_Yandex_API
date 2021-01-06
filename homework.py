@@ -32,8 +32,6 @@ LOG_API_ERROR = 'Server said that he faced a trouble: {error}!\n' + REQUEST_LOG
 LOG_SENT_MESSAGE = 'Have sent a message: {}'
 LOG_START_BOT = 'Bot has launched'
 
-bot_client = telegram.Bot(token=TELEGRAM_TOKEN)
-
 
 def parse_homework_status(homework):
     status = homework['status']
@@ -87,6 +85,7 @@ def send_message(message, bot_client):
 
 
 def main():
+    bot_client = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     logging.debug(LOG_START_BOT)
     while True:
