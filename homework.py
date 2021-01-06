@@ -24,9 +24,9 @@ HOMEWORK_STATUSES = {
 REQUEST_LOG = ('Request url was: {url}\n'
                'Headers were: {headers}\n'
                'Params were: {params}')
-BOT_ERROR = 'Bot has faced an error: {}'
+BOT_ERROR = 'Bot has faced an error: {error}'
 LOG_VALUE_ERROR = ('Json doesnt contain expected homework status values. '
-                   'Json value: {}')
+                   'Json value: {status}')
 LOG_CONNECTION_ERROR = 'Request faced an error: {error}!\n' + REQUEST_LOG
 LOG_API_ERROR = 'Server said that he faced a trouble: {error}!\n' + REQUEST_LOG
 LOG_SENT_MESSAGE = 'Have sent a message: {}'
@@ -38,7 +38,7 @@ def parse_homework_status(homework):
     # Check if json contains expected values
     if status not in HOMEWORK_STATUSES:
         raise ValueError(
-           LOG_VALUE_ERROR.format(status)
+           LOG_VALUE_ERROR.format(status=status)
         )
     return HOMEWORK_IS_CHECKED.format(
         homework_name=homework['homework_name'],
@@ -48,7 +48,7 @@ def parse_homework_status(homework):
 
 def get_homework_statuses(current_timestamp):
     params = {'from_date': current_timestamp}
-    request_log = dict(
+    request_information = dict(
         url=YANDEX_HOMEWORK_URL,
         headers=REQUEST_HEADERS,
         params=params
@@ -63,7 +63,7 @@ def get_homework_statuses(current_timestamp):
         raise ConnectionError(
             LOG_CONNECTION_ERROR.format(
                 error=error,
-                **request_log
+                **request_information
             )
         )
     response_json = response.json()
@@ -73,7 +73,7 @@ def get_homework_statuses(current_timestamp):
             raise ValueError(
                 LOG_API_ERROR.format(
                     error=response_json[error_key],
-                    **request_log
+                    **request_information
                 )
             )
     return response_json
@@ -103,7 +103,7 @@ def main():
             time.sleep(2000)
         except Exception as error:
             logging.error(
-                BOT_ERROR.format(error),
+                BOT_ERROR.format(error=error),
                 exc_info=False
             )
             time.sleep(5)
